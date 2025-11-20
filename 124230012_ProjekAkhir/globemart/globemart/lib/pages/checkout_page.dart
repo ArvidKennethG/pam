@@ -225,7 +225,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     const SizedBox(height: 12),
 
                     DropdownButtonFormField(
-                      value: currency,
+                      initialValue: currency,
                       dropdownColor: const Color(0xFF23103f),
                       items: ["USD", "IDR", "EUR", "JPY", "GBP"]
                           .map((c) => DropdownMenuItem(
