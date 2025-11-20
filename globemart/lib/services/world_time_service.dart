@@ -1,9 +1,15 @@
+// lib/services/world_time_service.dart
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class WorldTimeService {
-  static Future<String> getTime(String timeZone) async {
-    final url = Uri.parse("https://timeapi.io/api/Time/current/zone?timeZone=$timeZone");
+  /// Mengambil waktu berdasarkan timezone.
+  /// Default = Asia/Jakarta
+  static Future<String> getTime([String timeZone = "Asia/Jakarta"]) async {
+    final url = Uri.parse(
+      "https://timeapi.io/api/Time/current/zone?timeZone=$timeZone",
+    );
 
     try {
       final res = await http.get(url);

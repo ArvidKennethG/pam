@@ -1,4 +1,4 @@
-// lib/models/transaction_model.dart
+// lib/models/transaction_model.dart  (modified)
 
 import 'package:hive/hive.dart';
 
@@ -9,12 +9,11 @@ class TransactionModel extends HiveObject {
   @HiveField(0)
   String id;
 
-  // productName will be a readable summary (single product or multi-line cart summary)
   @HiveField(1)
   String productName;
 
   @HiveField(2)
-  double amount; // total amount in currency (or USD)
+  double amount;
 
   @HiveField(3)
   String currency;
@@ -28,6 +27,10 @@ class TransactionModel extends HiveObject {
   @HiveField(6)
   String paymentMethod;
 
+  // NEW: shipping address stored as a single string (human readable)
+  @HiveField(7)
+  String? shippingAddress;
+
   TransactionModel({
     required this.id,
     required this.productName,
@@ -36,5 +39,6 @@ class TransactionModel extends HiveObject {
     required this.dateTime,
     required this.location,
     required this.paymentMethod,
+    this.shippingAddress,
   });
 }

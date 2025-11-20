@@ -1,7 +1,9 @@
 import 'package:hive_flutter/hive_flutter.dart';
+
 import '../models/user_model.dart';
 import '../models/transaction_model.dart';
 import '../models/feedback_model.dart';
+import '../models/address_model.dart';
 
 class HiveService {
   static late Box userBox;
@@ -10,6 +12,12 @@ class HiveService {
   static late Box<FeedbackModel> feedbackBox;
   static late Box cartBox; // dynamic box for cart list
 
+  // ⭐ NEW: Address storage box
+  static late Box addressBox;
+
+  // =====================================================
+  // INIT HIVE
+  // =====================================================
   static Future<void> initHive() async {
     if (!Hive.isAdapterRegistered(1)) {
       Hive.registerAdapter(UserModelAdapter());
@@ -25,15 +33,24 @@ class HiveService {
     userDataBox = await Hive.openBox<UserModel>('userDataBox');
     transactionBox = await Hive.openBox<TransactionModel>('transactionBox');
     feedbackBox = await Hive.openBox<FeedbackModel>('feedbackBox');
-    cartBox = await Hive.openBox('cartBox'); // plain box storing List<Map>
+    cartBox = await Hive.openBox('cartBox');
+
+    // ⭐ NEW
+    addressBox = await Hive.openBox('addressBox');
   }
 
-  // SESSION ------------------------------------------
+  // =====================================================
+  // LOGIN SESSION
+  // =====================================================
   static bool get isLoggedIn => userBox.get('isLoggedIn', defaultValue: false);
+
   static void setLoginSession(bool value) => userBox.put('isLoggedIn', value);
+
   static void clearSession() => userBox.clear();
 
-  // USER ----------------------------------------------
+  // =====================================================
+  // USER
+  // =====================================================
   static Future<void> saveUser(UserModel user) async =>
       userDataBox.put(user.id, user);
 
@@ -45,7 +62,8 @@ class HiveService {
     }
   }
 
-  static Future<void> updateUserProfileImage(String userId, String path) async {
+  static Future<void> updateUserProfileImage(
+      String userId, String path) async {
     final user = userDataBox.get(userId);
     if (user != null) {
       user.profileImagePath = path;
@@ -53,7 +71,9 @@ class HiveService {
     }
   }
 
-  // CART (stored as List<Map>)
+  // =====================================================
+  // CART (List<Map>)
+  // =====================================================
   static Future<void> saveCartList(List<Map<String, dynamic>> list) async {
     await cartBox.put('cart', list);
   }
@@ -68,11 +88,32 @@ class HiveService {
     }
   }
 
-  static Future<void> clearCart() async {
-    await cartBox.delete('cart');
+  static Future<void> clearCart() async => cartBox.delete('cart');
+
+  // =====================================================
+  // ⭐ ADDRESS CRUD (BARU)
+  // =====================================================
+  static Future<void> saveAddress(AddressModel a) async {
+    await addressBox.put(a.id, a.toMap());
   }
 
-  // TRANSACTION ---------------------------------------
+  static List<AddressModel> getAddresses() {
+    return addressBox.values
+        .map(
+          (e) => AddressModel.fromMap(
+            Map<String, dynamic>.from(e),
+          ),
+        )
+        .toList();
+  }
+
+  static Future<void> deleteAddress(String id) async {
+    await addressBox.delete(id);
+  }
+
+  // =====================================================
+  // TRANSACTION
+  // =====================================================
   static Future<void> saveTransaction(TransactionModel trx) async =>
       transactionBox.put(trx.id, trx);
 
@@ -81,19 +122,18 @@ class HiveService {
 
   static double getTotalSpentByUser(String? username) {
     if (username == null) return 0.0;
-    final list = transactionBox.values.toList();
     double sum = 0;
-    for (var t in list) {
+    for (var t in transactionBox.values) {
       sum += t.amount;
     }
     return sum;
   }
 
-  static int getTotalTransactionCount() {
-    return transactionBox.length;
-  }
+  static int getTotalTransactionCount() => transactionBox.length;
 
-  // FEEDBACK -------------------------------------------
+  // =====================================================
+  // FEEDBACK
+  // =====================================================
   static Future<void> saveFeedback(FeedbackModel fb) async =>
       feedbackBox.put(fb.id, fb);
 

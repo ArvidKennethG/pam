@@ -1,22 +1,26 @@
 // lib/pages/checkout_page.dart
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/product_model.dart';
-import '../routes/app_routes.dart';
+import '../models/address_model.dart';
+import '../services/hive_service.dart';
 
 class CheckoutPage extends StatefulWidget {
   final ProductModel? product;
   final int? singleQty;
+  final int? qty;
   final List<dynamic>? cart;
+  final bool? isSingle;
 
   const CheckoutPage({
     super.key,
     this.product,
     this.singleQty,
+    this.qty,
     this.cart,
+    this.isSingle,
   });
 
   @override
@@ -28,6 +32,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
   double rate = 1.0;
   double totalUsd = 0;
   bool loadingRate = false;
+
+  AddressModel? selectedAddress;
 
   static const exchangeUrl =
       "https://v6.exchangerate-api.com/v6/9ee514d7374850d1999c8c1a/latest/USD";
@@ -43,12 +49,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
     setState(fn);
   }
 
-  /// 🔥 Hitung total USD (untuk single product atau cart)
+  bool get _isSingleContext {
+    if (widget.isSingle != null) return widget.isSingle!;
+    if (widget.product != null &&
+        (widget.cart == null || widget.cart!.isEmpty)) return true;
+    return false;
+  }
+
+  int get _quantity => widget.singleQty ?? widget.qty ?? 1;
+
   void computeTotal() {
     double sum = 0;
 
-    if (widget.product != null) {
-      sum = widget.product!.price * (widget.singleQty ?? 1);
+    if (_isSingleContext && widget.product != null) {
+      sum = widget.product!.price * _quantity;
     } else if (widget.cart != null) {
       for (var item in widget.cart!) {
         final double p = (item['price'] as num).toDouble();
@@ -57,11 +71,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
       }
     }
 
-    totalUsd = sum;
-    safeSet(() {});
+    safeSet(() => totalUsd = sum);
   }
 
-  /// 🔥 API konversi mata uang (fallback aman)
   Future<void> fetchRate() async {
     safeSet(() => loadingRate = true);
 
@@ -103,7 +115,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isSingle = widget.product != null;
+    final isSingle = _isSingleContext;
     final cart = widget.cart;
 
     return Scaffold(
@@ -124,7 +136,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
           child: ListView(
             padding: const EdgeInsets.all(18),
             children: [
-              // 🔥 CARD DAFTAR BARANG
+              // ============================
+              // 🔥 ALAMAT PENGIRIMAN
+              // ============================
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -134,10 +148,70 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Barang:", style: TextStyle(color: Colors.white70)),
+                    const Text("Alamat Pengiriman",
+                        style: TextStyle(color: Colors.white70)),
                     const SizedBox(height: 8),
 
-                    // SINGLE PRODUCT CHECKOUT
+                    // Jika sudah memilih alamat
+                    if (selectedAddress != null)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            selectedAddress!.label,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            selectedAddress!.fullAddress,
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+
+                    ElevatedButton(
+                      onPressed: () async {
+                        final a = await Navigator.pushNamed(
+                          context,
+                          '/address',
+                        );
+
+                        if (a is AddressModel) {
+                          setState(() => selectedAddress = a);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFff4ecf),
+                      ),
+                      child: Text(selectedAddress == null
+                          ? "Pilih Alamat"
+                          : "Ganti Alamat"),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 22),
+
+              // ============================
+              // 🔥 BARANG
+              // ============================
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF23103f),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Barang:",
+                        style: TextStyle(color: Colors.white70)),
+                    const SizedBox(height: 8),
+
                     if (isSingle && widget.product != null)
                       Row(
                         children: [
@@ -148,27 +222,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               height: 60,
                               width: 60,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  Container(color: Colors.black26, width: 60, height: 60),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              "${widget.product!.title} x${widget.singleQty}",
+                              "${widget.product!.title} x$_quantity",
                               style: const TextStyle(color: Colors.white),
                             ),
                           ),
                         ],
                       )
-
-                    // MULTI-ITEM CART CHECKOUT
-                    else if (cart != null)
+                    else if (cart != null && cart.isNotEmpty)
                       Column(
                         children: [
                           for (var item in cart)
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 6),
                               child: Row(
                                 children: [
                                   ClipRRect(
@@ -178,22 +249,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                       height: 48,
                                       width: 48,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) =>
-                                          Container(color: Colors.black26, width: 48, height: 48),
                                     ),
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       "${item['title']} x${item['qty']}",
-                                      style: const TextStyle(color: Colors.white),
+                                      style: const TextStyle(
+                                          color: Colors.white),
                                     ),
                                   ),
                                   Text(
-                                    "USD ${(item['price'] * item['qty']).toStringAsFixed(2)}",
+                                    "USD ${( (item['price'] as num).toDouble() * (item['qty'] as num).toInt()).toStringAsFixed(2)}",
                                     style: const TextStyle(
-                                        color: Color(0xFFff4ecf),
-                                        fontWeight: FontWeight.bold),
+                                      color: Color(0xFFff4ecf),
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -211,7 +282,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
               const SizedBox(height: 22),
 
+              // ============================
               // 🔥 KONVERSI MATA UANG
+              // ============================
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -221,17 +294,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Konversi Mata Uang", style: TextStyle(color: Colors.white70)),
+                    const Text("Konversi Mata Uang",
+                        style: TextStyle(color: Colors.white70)),
                     const SizedBox(height: 12),
 
                     DropdownButtonFormField(
                       initialValue: currency,
                       dropdownColor: const Color(0xFF23103f),
                       items: ["USD", "IDR", "EUR", "JPY", "GBP"]
-                          .map((c) => DropdownMenuItem(
-                                value: c,
-                                child: Text(c, style: const TextStyle(color: Colors.white)),
-                              ))
+                          .map(
+                            (c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(c,
+                                  style:
+                                      const TextStyle(color: Colors.white)),
+                            ),
+                          )
                           .toList(),
                       onChanged: (v) {
                         currency = v!;
@@ -250,9 +328,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     const SizedBox(height: 14),
 
                     loadingRate
-                        ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                                color: Colors.white),
+                          )
                         : Text(
-                            "Total: ${currency == 'USD' ? "USD ${totalUsd.toStringAsFixed(2)}" : "$currency ${convert(totalUsd).toStringAsFixed(2)}"}",
+                            currency == 'USD'
+                                ? "Total: USD ${totalUsd.toStringAsFixed(2)}"
+                                : "Total: $currency ${convert(totalUsd).toStringAsFixed(2)}",
                             style: const TextStyle(
                               color: Color(0xFFff4ecf),
                               fontSize: 20,
@@ -265,26 +348,34 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
               const SizedBox(height: 22),
 
+              // ============================
               // 🔥 BUTTON LANJUT PEMBAYARAN
+              // ============================
               ElevatedButton(
                 onPressed: () {
                   Navigator.pushNamed(
                     context,
-                    AppRoutes.payment,
+                    '/payment',
                     arguments: {
                       'isSingle': isSingle,
                       'product': widget.product,
-                      'qty': widget.singleQty,
+                      'qty': _quantity,
                       'cart': widget.cart,
                       'totalUsd': totalUsd,
                       'currency': currency,
+
+                      // ⭐ kirim alamat
+                      'address': selectedAddress,
                     },
                   );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFff4ecf),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: const Text(
                   "Lanjut ke Pembayaran",
