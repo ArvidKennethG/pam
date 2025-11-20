@@ -1,0 +1,56 @@
+name: globemart
+description: A global shopping app with currency and time conversion.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # State Management
+  provider: ^6.1.2
+
+  # HTTP Requests
+  http: ^1.2.1
+
+  # Hive Database
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # Encryption & Hashing
+  crypto: ^3.0.3
+
+  # LBS / GPS
+  geolocator: ^10.1.0
+
+  # Notifications
+  flutter_local_notifications: ^17.1.0
+
+  # PDF & Printing
+  pdf: ^3.11.0
+  printing: ^5.10.0
+
+  # Image picker
+  image_picker: ^0.8.7+5
+
+  # File system / saving PDF
+  path_provider: ^2.1.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.6
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/profile.png
+    - assets/logo.png
