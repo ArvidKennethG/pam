@@ -53,6 +53,16 @@ class CartProvider extends ChangeNotifier {
     await HiveService.saveCartList(list);
   }
 
+  void _touchCart() {
+    // update timestamp setiap cart berubah
+    HiveService.setCartLastUpdated(DateTime.now());
+  }
+
+  /// dipanggil ketika user membuka halaman cart (untuk abandoned reminder)
+  void markCartVisited() {
+    HiveService.setCartLastUpdated(DateTime.now());
+  }
+
   void addToCart(CartItem item) {
     final idx = items.indexWhere((i) => i.productId == item.productId);
     if (idx >= 0) {
@@ -60,12 +70,14 @@ class CartProvider extends ChangeNotifier {
     } else {
       items.add(item);
     }
+    _touchCart();
     _saveToHive();
     notifyListeners();
   }
 
   void removeFromCart(int productId) {
     items.removeWhere((i) => i.productId == productId);
+    _touchCart();
     _saveToHive();
     notifyListeners();
   }
@@ -75,6 +87,7 @@ class CartProvider extends ChangeNotifier {
     if (idx >= 0) {
       items[idx].qty = qty;
       if (items[idx].qty <= 0) items.removeAt(idx);
+      _touchCart();
       _saveToHive();
       notifyListeners();
     }
@@ -97,6 +110,8 @@ class CartProvider extends ChangeNotifier {
   Future<void> clearCart() async {
     items.clear();
     await HiveService.clearCart();
+    // boleh update timestamp juga, tapi notifikasi tidak akan muncul karena cart kosong
+    HiveService.setCartLastUpdated(DateTime.now());
     notifyListeners();
   }
 }

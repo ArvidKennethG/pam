@@ -14,6 +14,7 @@ import '../pages/payment_page.dart';
 import '../pages/transaction_detail_page.dart';
 import '../pages/transaction_history_page.dart';
 import '../pages/feedback_page.dart';
+import '../pages/address_list_page.dart'; // <- new
 
 class AppRoutes {
   static const splash = '/';
@@ -29,57 +30,37 @@ class AppRoutes {
   static const transactionDetail = '/transaction-detail';
   static const transactionHistory = '/transaction-history';
   static const feedback = '/feedback';
+  static const address = '/address'; // <- new
 
-  /// Use this with: navigatorKey.currentState?.pushNamed(AppRoutes.checkout, arguments: {...})
-  /// Expected argument shapes (examples):
-  /// - Checkout single product:
-  ///   { 'product': ProductModel, 'singleQty': 2, 'isSingle': true }
-  /// - Checkout from cart:
-  ///   { 'cart': List<Map>, 'isSingle': false }
-  ///
-  /// - Payment expects args through ModalRoute (PaymentPage reads them directly):
-  ///   { 'isSingle': bool, 'product': ProductModel?, 'qty': int?, 'cart': List?, 'totalUsd': double?, 'currency': String? }
   static Route<dynamic> generate(RouteSettings settings) {
     final args = settings.arguments;
 
     switch (settings.name) {
       case splash:
         return MaterialPageRoute(builder: (_) => const SplashPage());
-
       case login:
         return MaterialPageRoute(builder: (_) => const LoginPage());
-
       case register:
         return MaterialPageRoute(builder: (_) => const RegisterPage());
-
       case main:
       case home:
         return MaterialPageRoute(builder: (_) => const MainNavigation());
-
       case profile:
         return MaterialPageRoute(builder: (_) => const ProfilePage());
-
       case cart:
         return MaterialPageRoute(builder: (_) => const CartPage());
-
       case feedback:
         return MaterialPageRoute(builder: (_) => const FeedbackPage());
-
       case productDetail: {
         final map = args as Map<String, dynamic>?;
-        // product must be passed as map['product'] (ProductModel)
         final product = map != null ? map['product'] as dynamic : null;
         if (product == null) {
-          return MaterialPageRoute(builder: (_) => const Scaffold(
-            body: Center(child: Text('Product not provided')),
-          ));
+          return MaterialPageRoute(builder: (_) => const Scaffold(body: Center(child: Text('Product not provided'))));
         }
         return MaterialPageRoute(builder: (_) => ProductDetailPage(product: product));
       }
-
       case checkout: {
         final map = args as Map<String, dynamic>?;
-        // CheckoutPage constructor is backward-compatible: accepts singleQty, qty, cart, product, isSingle
         return MaterialPageRoute(
           builder: (_) => CheckoutPage(
             product: map != null ? map['product'] as dynamic : null,
@@ -90,40 +71,29 @@ class AppRoutes {
           ),
         );
       }
-
       case payment: {
-        // PaymentPage reads its arguments from ModalRoute.of(context) inside the page.
-        // We forward settings so the page can access them (builder uses settings param).
-        return MaterialPageRoute(
-          builder: (_) => const PaymentPage(),
-          settings: settings,
-        );
+        return MaterialPageRoute(builder: (_) => const PaymentPage(), settings: settings);
       }
-
       case transactionDetail: {
         final map = args as Map<String, dynamic>?;
         final trx = map != null ? map['trx'] : null;
         if (trx == null) {
-          return MaterialPageRoute(builder: (_) => const Scaffold(
-            body: Center(child: Text('Transaction not provided')),
-          ));
+          return MaterialPageRoute(builder: (_) => const Scaffold(body: Center(child: Text('Transaction not provided'))));
         }
         return MaterialPageRoute(builder: (_) => TransactionDetailPage(trx: trx));
       }
-
       case transactionHistory:
         return MaterialPageRoute(builder: (_) => const TransactionHistoryPage());
-
+      case address:
+        // support select mode via arguments: { 'selectMode': true/false }
+        final map = args as Map<String, dynamic>?;
+        final selectMode = map != null ? (map['selectMode'] as bool? ?? false) : false;
+        return MaterialPageRoute(builder: (_) => AddressListPage(selectMode: selectMode));
       default:
-        return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Route not found')),
-          ),
-        );
+        return MaterialPageRoute(builder: (_) => const Scaffold(body: Center(child: Text('Route not found'))));
     }
   }
 
-  /// Optional: minimal mapping for MaterialApp.routes (mainly for initial routes).
   static Map<String, WidgetBuilder> get routes => {
         splash: (c) => const SplashPage(),
         login: (c) => const LoginPage(),

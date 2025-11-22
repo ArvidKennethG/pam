@@ -1,4 +1,4 @@
-// lib/models/transaction_model.dart  (modified)
+// lib/models/transaction_model.dart
 
 import 'package:hive/hive.dart';
 
@@ -27,7 +27,6 @@ class TransactionModel extends HiveObject {
   @HiveField(6)
   String paymentMethod;
 
-  // NEW: shipping address stored as a single string (human readable)
   @HiveField(7)
   String? shippingAddress;
 

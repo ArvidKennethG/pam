@@ -1,4 +1,5 @@
 // lib/pages/checkout_page.dart
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -42,6 +43,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   void initState() {
     super.initState();
     computeTotal();
+    _autoSelectDefaultAddress();
   }
 
   void safeSet(VoidCallback fn) {
@@ -72,6 +74,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
 
     safeSet(() => totalUsd = sum);
+  }
+
+  /// 🔥 AUTO-SELECT alamat default
+  void _autoSelectDefaultAddress() {
+    final list = HiveService.getAddresses();
+
+    if (list.isEmpty) return;
+
+    final def = list.firstWhere(
+      (e) => e.isDefault == true,
+      orElse: () => list.first,
+    );
+
+    setState(() {
+      selectedAddress = def;
+    });
   }
 
   Future<void> fetchRate() async {
@@ -136,221 +154,124 @@ class _CheckoutPageState extends State<CheckoutPage> {
           child: ListView(
             padding: const EdgeInsets.all(18),
             children: [
-              // ============================
-              // 🔥 ALAMAT PENGIRIMAN
-              // ============================
+              // alamat
               Container(
                 padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF23103f),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Alamat Pengiriman",
-                        style: TextStyle(color: Colors.white70)),
+                decoration: BoxDecoration(color: const Color(0xFF23103f), borderRadius: BorderRadius.circular(16)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text("Alamat Pengiriman", style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 8),
+                  if (selectedAddress != null) ...[
+                    Text(selectedAddress!.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text(selectedAddress!.fullAddress, style: const TextStyle(color: Colors.white70)),
                     const SizedBox(height: 8),
-
-                    // Jika sudah memilih alamat
-                    if (selectedAddress != null)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            selectedAddress!.label,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            selectedAddress!.fullAddress,
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-                      ),
-
-                    ElevatedButton(
-                      onPressed: () async {
-                        final a = await Navigator.pushNamed(
-                          context,
-                          '/address',
-                        );
-
-                        if (a is AddressModel) {
-                          setState(() => selectedAddress = a);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFff4ecf),
-                      ),
-                      child: Text(selectedAddress == null
-                          ? "Pilih Alamat"
-                          : "Ganti Alamat"),
-                    ),
                   ],
-                ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      final a = await Navigator.pushNamed(
+                        context,
+                        '/address',
+                        arguments: {'selectMode': true},
+                      );
+                      if (a is AddressModel) {
+                        setState(() => selectedAddress = a);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFff4ecf)),
+                    child: Text(selectedAddress == null ? "Pilih Alamat" : "Ganti Alamat"),
+                  )
+                ]),
               ),
 
               const SizedBox(height: 22),
 
-              // ============================
-              // 🔥 BARANG
-              // ============================
+              // barang
               Container(
                 padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF23103f),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Barang:",
-                        style: TextStyle(color: Colors.white70)),
-                    const SizedBox(height: 8),
-
-                    if (isSingle && widget.product != null)
-                      Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              widget.product!.thumbnail,
-                              height: 60,
-                              width: 60,
-                              fit: BoxFit.cover,
+                decoration: BoxDecoration(color: const Color(0xFF23103f), borderRadius: BorderRadius.circular(16)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text("Barang:", style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 8),
+                  if (isSingle && widget.product != null)
+                    Row(children: [
+                      ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(widget.product!.thumbnail, height: 60, width: 60, fit: BoxFit.cover)),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text("${widget.product!.title} x$_quantity", style: const TextStyle(color: Colors.white))),
+                    ])
+                  else if (cart != null && cart.isNotEmpty)
+                    Column(children: [
+                      for (var item in cart)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(item['thumbnail'], height: 48, width: 48, fit: BoxFit.cover),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              "${widget.product!.title} x$_quantity",
-                              style: const TextStyle(color: Colors.white),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text("${item['title']} x${item['qty']}", style: const TextStyle(color: Colors.white)),
                             ),
-                          ),
-                        ],
-                      )
-                    else if (cart != null && cart.isNotEmpty)
-                      Column(
-                        children: [
-                          for (var item in cart)
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 6),
-                              child: Row(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      item['thumbnail'],
-                                      height: 48,
-                                      width: 48,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      "${item['title']} x${item['qty']}",
-                                      style: const TextStyle(
-                                          color: Colors.white),
-                                    ),
-                                  ),
-                                  Text(
-                                    "USD ${( (item['price'] as num).toDouble() * (item['qty'] as num).toInt()).toStringAsFixed(2)}",
-                                    style: const TextStyle(
-                                      color: Color(0xFFff4ecf),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            Text(
+                              "USD ${( (item['price'] as num).toDouble() * (item['qty'] as num).toInt()).toStringAsFixed(2)}",
+                              style: const TextStyle(color: Color(0xFFff4ecf), fontWeight: FontWeight.bold),
                             ),
-                        ],
-                      )
-                    else
-                      const Text(
-                        "Tidak ada item",
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 22),
-
-              // ============================
-              // 🔥 KONVERSI MATA UANG
-              // ============================
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF23103f),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Konversi Mata Uang",
-                        style: TextStyle(color: Colors.white70)),
-                    const SizedBox(height: 12),
-
-                    DropdownButtonFormField(
-                      initialValue: currency,
-                      dropdownColor: const Color(0xFF23103f),
-                      items: ["USD", "IDR", "EUR", "JPY", "GBP"]
-                          .map(
-                            (c) => DropdownMenuItem(
-                              value: c,
-                              child: Text(c,
-                                  style:
-                                      const TextStyle(color: Colors.white)),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (v) {
-                        currency = v!;
-                        fetchRate();
-                      },
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.black26,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          ]),
                         ),
-                      ),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    loadingRate
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                                color: Colors.white),
-                          )
-                        : Text(
-                            currency == 'USD'
-                                ? "Total: USD ${totalUsd.toStringAsFixed(2)}"
-                                : "Total: $currency ${convert(totalUsd).toStringAsFixed(2)}",
-                            style: const TextStyle(
-                              color: Color(0xFFff4ecf),
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ],
-                ),
+                    ])
+                  else
+                    const Text("Tidak ada item", style: TextStyle(color: Colors.white54)),
+                ]),
               ),
 
               const SizedBox(height: 22),
 
-              // ============================
-              // 🔥 BUTTON LANJUT PEMBAYARAN
-              // ============================
+              // konversi
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: const Color(0xFF23103f), borderRadius: BorderRadius.circular(16)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text("Konversi Mata Uang", style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField(
+                    value: currency,
+                    dropdownColor: const Color(0xFF23103f),
+                    items: ["USD", "IDR", "EUR", "JPY", "GBP"]
+                        .map((c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(c, style: const TextStyle(color: Colors.white)),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      currency = v!;
+                      fetchRate();
+                    },
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 14),
+                  loadingRate
+                      ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                      : Text(
+                          currency == 'USD'
+                              ? "Total: USD ${totalUsd.toStringAsFixed(2)}"
+                              : "Total: $currency ${convert(totalUsd).toStringAsFixed(2)}",
+                          style: const TextStyle(
+                            color: Color(0xFFff4ecf),
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ]),
+              ),
+
+              const SizedBox(height: 22),
+
               ElevatedButton(
                 onPressed: () {
                   Navigator.pushNamed(
@@ -363,25 +284,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       'cart': widget.cart,
                       'totalUsd': totalUsd,
                       'currency': currency,
-
-                      // ⭐ kirim alamat
                       'address': selectedAddress,
                     },
                   );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFff4ecf),
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                child: const Text(
-                  "Lanjut ke Pembayaran",
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
+                child: const Text("Lanjut ke Pembayaran", style: TextStyle(fontSize: 16)),
+              )
             ],
           ),
         ),

@@ -12,7 +12,7 @@ class HiveService {
   static late Box<FeedbackModel> feedbackBox;
   static late Box cartBox; // dynamic box for cart list
 
-  // ⭐ NEW: Address storage box
+  // ⭐ Address storage box
   static late Box addressBox;
 
   // =====================================================
@@ -35,7 +35,6 @@ class HiveService {
     feedbackBox = await Hive.openBox<FeedbackModel>('feedbackBox');
     cartBox = await Hive.openBox('cartBox');
 
-    // ⭐ NEW
     addressBox = await Hive.openBox('addressBox');
   }
 
@@ -91,7 +90,31 @@ class HiveService {
   static Future<void> clearCart() async => cartBox.delete('cart');
 
   // =====================================================
-  // ⭐ ADDRESS CRUD (BARU)
+  // CART TIMESTAMP (Abandoned Cart Helper)
+  // =====================================================
+  static void setCartLastUpdated(DateTime dt) {
+    userBox.put('cartLastUpdated', dt.toIso8601String());
+  }
+
+  static DateTime? getCartLastUpdated() {
+    final raw = userBox.get('cartLastUpdated');
+    if (raw is String) {
+      try {
+        return DateTime.parse(raw);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  static bool hasCartItems() {
+    final list = getCartList();
+    return list.isNotEmpty;
+  }
+
+  // =====================================================
+  // ADDRESS CRUD
   // =====================================================
   static Future<void> saveAddress(AddressModel a) async {
     await addressBox.put(a.id, a.toMap());

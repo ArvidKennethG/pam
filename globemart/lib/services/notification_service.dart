@@ -1,5 +1,3 @@
-// lib/services/notification_service.dart
-
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
@@ -8,7 +6,6 @@ class NotificationService {
 
   static bool _initialized = false;
 
-  /// Inisialisasi notifikasi
   static Future<void> init() async {
     if (_initialized) return;
 
@@ -23,14 +20,14 @@ class NotificationService {
     _initialized = true;
   }
 
-  /// Menampilkan notifikasi sukses
+  // Notifikasi sukses pembayaran
   static Future<void> showSuccessNotification({
     required String title,
     required String body,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      'payment_success',        // channel id
-      'Payment Success',        // channel name
+      'payment_success',
+      'Payment Success',
       importance: Importance.high,
       priority: Priority.high,
     );
@@ -38,10 +35,32 @@ class NotificationService {
     const details = NotificationDetails(android: androidDetails);
 
     await _notif.show(
-      1,       // notification ID
-      title,   // Judul
-      body,    // Isi pesan
-      details, // Gaya notifikasi
+      1,
+      title,
+      body,
+      details,
+    );
+  }
+
+  // ⭐ Notifikasi Abandoned Cart (24 jam)
+  static Future<void> showCartReminderNotification({
+    required String title,
+    required String body,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'cart_reminder',
+      'Cart Reminder',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+
+    const details = NotificationDetails(android: androidDetails);
+
+    await _notif.show(
+      2,
+      title,
+      body,
+      details,
     );
   }
 }

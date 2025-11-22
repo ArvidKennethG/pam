@@ -19,6 +19,30 @@ void main() async {
     await NotificationService.init();
   } catch (_) {}
 
+  // ⭐ CEK ABANDONED CART (>= 24 JAM)
+  try {
+    final last = HiveService.getCartLastUpdated();
+    final hasCart = HiveService.hasCartItems();
+
+    if (last != null && hasCart) {
+      final diff = DateTime.now().difference(last);
+
+      if (diff.inHours >= 24) {
+        final cartList = HiveService.getCartList();
+        final count = cartList.length;
+
+        await NotificationService.showCartReminderNotification(
+          title: 'Keranjangmu masih ada',
+          body: count > 1
+              ? 'Ada $count item yang masih menunggu di keranjang. Yuk checkout sebelum kehabisan!'
+              : 'Ada 1 item yang masih menunggu di keranjang. Yuk checkout sebelum kehabisan!',
+        );
+      }
+    }
+  } catch (_) {
+    // kalau gagal, abaikan saja (jangan bikin app crash)
+  }
+
   runApp(const GlobeMartApp());
 }
 
@@ -63,8 +87,10 @@ class GlobeMartApp extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: neonPink,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
             ),
           ),
         ),
